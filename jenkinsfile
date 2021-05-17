@@ -1,0 +1,31 @@
+node('master')
+{
+    def mavenHome=tool name:"maven3.8.1"
+    properties([[$class: 'JobLocalConfiguration', changeReasonComment: ''], pipelineTriggers([pollSCM('* * * * *')])])
+    
+    stage('checkout')
+    {
+        git branch: 'master', credentialsId: 'd557a916-8e3b-4401-83e1-8a1c717f9890', url: 'https://github.com/sai-ec-projects/maven-web-application-1.git'
+    }
+    stage('build')
+    {
+        sh "${mavenHome}/bin/mvn clean package"
+    
+    }
+    stage('executesonarqube')
+    {
+        sh "${mavenHome}/bin/mvn sonar:sonar"
+    }
+    stage('upload artifact into nexus')
+    {
+        sh "${mavenHome}/bin/mvn deploy"
+    }
+    stage('deployartifacttomcat')
+    {
+        sshagent(['a7476ba5-d73e-4e3c-ad79-93ec2bf6dfb9']) {
+    
+        sh "scp -o StrictHostKeyChecking=no target/maven-web-application.war ec2-user@52.66.246.205://opt/apache-tomcat-9.0.44/webapps/"
+    
+        }
+        }
+}
